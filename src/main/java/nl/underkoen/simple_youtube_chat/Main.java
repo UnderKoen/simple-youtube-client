@@ -11,6 +11,7 @@ import org.apache.http.client.HttpClient;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
@@ -22,9 +23,9 @@ import java.util.List;
  * Created by Under_Koen on 08/03/2018.
  */
 public class Main {
-    private static final String refresh_token = "refresh_token here";
-    private static final String client_id = "client_id here";
-    private static final String client_secret = "client_secret here";
+    private static final String refresh_token = "";
+    private static final String client_id = "";
+    private static final String client_secret = "";
 
     public static void main(String[] args) throws Exception {
         JsonObject accesToken = refreshToken();
@@ -43,10 +44,32 @@ public class Main {
             for (Message message : messages) {
                 if (oldMessages.contains(message)) continue;
                 System.out.println(message.authorDetails.displayName + ": " + message.snippet.displayMessage);
+                if (message.snippet.displayMessage.contains("hey")) {
+                    sendMessage(liveChatIds.get(0), "hoi", accesToken);
+                }
             }
             oldMessages = messages;
             Thread.sleep(jsonMsgs.get("pollingIntervalMillis").getAsLong());
         }
+    }
+
+    public static JsonObject sendMessage(String chatId, String message, JsonObject json) throws Exception {
+        HttpPost request = new HttpPost("https://www.googleapis.com/youtube/v3/liveChat/messages?part=snippet");
+        request.addHeader("Content-Type", "application/json");
+        request.addHeader("Authorization", json.get("token_type").getAsString() + " " + json.get("access_token").getAsString());
+        JsonObject jsonMsg = new JsonObject();
+        JsonObject snippet = new JsonObject();
+        snippet.addProperty("liveChatId", chatId);
+        snippet.addProperty("type", "textMessageEvent");
+        JsonObject textMessageDetails = new JsonObject();
+        textMessageDetails.addProperty("messageText", message);
+        snippet.add("textMessageDetails", textMessageDetails);
+        jsonMsg.add("snippet", snippet);
+        HttpEntity entity = new StringEntity(jsonMsg.toString());
+        request.setEntity(entity);
+        HttpClient client = HttpClientBuilder.create().build();
+        HttpResponse response = client.execute(request);
+        return new JsonParser().parse(EntityUtils.toString(response.getEntity())).getAsJsonObject();
     }
 
     public static JsonObject getMessages(String chatId, JsonObject json) throws Exception {
